@@ -1,4 +1,10 @@
 import os
+import moviepy.config as conf
+
+# Force MoviePy to locate ImageMagick on the Linux GitHub runner
+conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
+
+# --- Keep the rest of your imports below ---
 from google import genai
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip, concatenate_videoclips
 from google.oauth2.credentials import Credentials
