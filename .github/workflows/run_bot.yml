@@ -2,9 +2,8 @@ name: Run YouTube Automation Bot
 
 on:
   schedule:
-    # Runs every day (adjust cron timing as needed)
     - cron: '0 */4 * * *'
-  workflow_dispatch: # Allows manual runs from the GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   run-bot:
@@ -27,6 +26,9 @@ jobs:
 
       - name: Install ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Fix ImageMagick Security Policy
+        run: sudo sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@\*"/g' /etc/ImageMagick-6/policy.xml
 
       - name: Run automation script
         run: python auto_youtube.py
