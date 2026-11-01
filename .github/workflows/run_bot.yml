@@ -24,11 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install ImageMagick
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
-
-      - name: Fix ImageMagick Security Policy
-        run: sudo sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@\*"/g' /etc/ImageMagick-6/policy.xml
+      - name: Install ImageMagick & Remove Restrictions
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          # Safely remove ImageMagick security policy restrictions blocking text generation
+          sudo rm -f /etc/ImageMagick-*/policy.xml
 
       - name: Run automation script
         run: python auto_youtube.py
