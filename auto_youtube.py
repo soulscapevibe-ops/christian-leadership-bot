@@ -4,7 +4,6 @@ import moviepy.config as conf
 # Force MoviePy to locate ImageMagick on the Linux GitHub runner
 conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
-# --- Keep the rest of your imports below ---
 from google import genai
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip, concatenate_videoclips
 from google.oauth2.credentials import Credentials
@@ -55,19 +54,13 @@ def main():
     client = genai.Client()
     print("Gemini client initialized successfully!")
 
-    # --- ADD YOUR GEMINI SCRIPT GENERATION & CONTENT LOGIC HERE ---
-    # Example: response = client.models.generate_content(...)
-    
     # 2. Render your video using MoviePy and save it locally as 'final_video.mp4'
     print("Starting video generation with MoviePy...")
     
-    # --- EXAMPLE MOVIEPY CODE (Replace or keep your own rendering logic) ---
-    # Make sure your script actually saves the file as 'final_video.mp4'
     txt_clip = TextClip("Christian Leadership", fontsize=50, color='white', size=(1280, 720))
     txt_clip = txt_clip.set_duration(5)
     video = CompositeVideoClip([txt_clip])
     video.write_videofile("final_video.mp4", fps=24, codec='libx264', audio=False)
-    # ---------------------------------------------------------------------
 
     print("Video generated and saved successfully as final_video.mp4!")
 
