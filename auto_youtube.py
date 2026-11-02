@@ -1,4 +1,5 @@
 import os
+import time
 import asyncio
 import moviepy.config as conf
 
@@ -6,13 +7,13 @@ import moviepy.config as conf
 conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
 from google import genai
+from google.genai.errors import ServerError
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip, AudioFileClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import edge_tts
 
-# Configuration for the voiceover style (Professional, warm, elegant)
 VOICE = "en-US-ChristopherNeural"
 
 async def generate_voiceover(text, output_filename="voiceover.mp3"):
@@ -64,18 +65,29 @@ def main():
     client = genai.Client()
     print("Gemini client initialized successfully!")
 
-    # 2. Generate a fresh script about Servant Leadership using Gemini
     prompt = (
         "Write a short, powerful, elegant 30-second script about Servant Leadership "
         "focusing on empathy, lifting others up, and leading with a quiet strength. "
         "Keep it concise, inspiring, and professional."
     )
     
-    # Updated to use gemini-3.8-flash
-    response = client.models.generate_content(
-        model='gemini-3.8-flash',
-        contents=prompt,
-    )
+    # 2. Generate content with automatic retry logic for 503 errors
+    response = None
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"Attempting to generate script (Attempt {attempt}/{max_retries})...")
+            response = client.models.generate_content(
+                model='gemini-3.8-flash',
+                contents=prompt,
+            )
+            break
+        except ServerError as e:
+            if attempt == max_retries:
+                raise e
+            print(f"Model busy (503). Retrying in 10 seconds...")
+            time.sleep(10)
+
     script_text = response.text.strip()
     print(f"Generated Script: {script_text[:60]}...")
 
@@ -83,7 +95,7 @@ def main():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
 
-    # 4. Render video with MoviePy (Clean, modern aesthetic)
+    # 4. Render video with MoviePy
     print("Starting video composition with MoviePy...")
     
     audio_clip = AudioFileClip("voiceover.mp3")
