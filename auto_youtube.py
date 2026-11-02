@@ -71,9 +71,9 @@ def main():
         "Keep it concise, inspiring, and professional."
     )
     
-    # Updated to use gemini-1.5-flash
+    # Updated to use gemini-3.8-flash
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-3.8-flash',
         contents=prompt,
     )
     script_text = response.text.strip()
