@@ -13,7 +13,7 @@ from googleapiclient.http import MediaFileUpload
 import edge_tts
 
 # Configuration for the voiceover style (Professional, warm, elegant)
-VOICE = "en-US-ChristopherNeural"  # Change to "en-US-AriaNeural" if you prefer a female voice
+VOICE = "en-US-ChristopherNeural"
 
 async def generate_voiceover(text, output_filename="voiceover.mp3"):
     print("Generating AI voiceover...")
@@ -38,10 +38,10 @@ def upload_to_youtube(file_path, title, description):
         "snippet": {
             "title": title,
             "description": description,
-            "categoryId": "22"  # People & Blogs category
+            "categoryId": "22"
         },
         "status": {
-            "privacyStatus": "public"  # Change to "private" or "unlisted" if you want to preview first
+            "privacyStatus": "public"
         }
     }
 
@@ -71,8 +71,9 @@ def main():
         "Keep it concise, inspiring, and professional."
     )
     
+    # Updated to use gemini-1.5-flash
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-1.5-flash',
         contents=prompt,
     )
     script_text = response.text.strip()
@@ -85,14 +86,11 @@ def main():
     # 4. Render video with MoviePy (Clean, modern aesthetic)
     print("Starting video composition with MoviePy...")
     
-    # Load the generated voiceover audio to determine exact video length
     audio_clip = AudioFileClip("voiceover.mp3")
     duration = audio_clip.duration
 
-    # Create an elegant deep slate/navy background (1280x720 landscape)
     bg_clip = ColorClip(size=(1280, 720), color=(15, 23, 42), duration=duration)
 
-    # Create clean text captions overlaying the background
     txt_clip = TextClip(
         f"Servant Leadership\n\n\"{script_text[:120]}...\"", 
         fontsize=38, 
@@ -102,11 +100,9 @@ def main():
         method='caption'
     ).set_duration(duration).set_position('center')
 
-    # Composite background and text, then bind the voiceover audio track
     video = CompositeVideoClip([bg_clip, txt_clip])
     video = video.set_audio(audio_clip)
 
-    # Export final high-definition MP4 file
     video.write_videofile(
         "final_video.mp4", 
         fps=24, 
@@ -116,7 +112,7 @@ def main():
     )
     print("Video generated and saved successfully as final_video.mp4!")
 
-    # 5. Upload the complete package to YouTube
+    # 5. Upload to YouTube
     print("Starting YouTube upload process...")
     upload_to_youtube(
         file_path="final_video.mp4", 
