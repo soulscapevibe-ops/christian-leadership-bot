@@ -8,7 +8,7 @@ import moviepy.config as conf
 conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
 from google import genai
-from google.genai.errors import ServerError
+from google.genai.errors import ServerError, ClientError
 from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -20,9 +20,8 @@ VOICE = "en-US-ChristopherNeural"
 # High-quality vibrant background video URL (Warm sunset/nature landscape)
 BACKGROUND_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-sun-shining-through-the-trees-of-a-forest-4355-large.mp4"
 
-# Royalty-free soft ambient background music loop (Gentle, calm instrumental)
+# Royalty-free soft ambient background music loop
 BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
-# Alternative smooth ambient loop if needed: https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3
 
 async def generate_voiceover(text, output_filename="voiceover.mp3"):
     print("Generating AI voiceover...")
@@ -90,7 +89,7 @@ def main():
         "Do not include titles, labels like VOICEOVER, scene directions, brackets, or meta notes."
     )
     
-    # 2. Generate content with automatic retries and fallback
+    # 2. Generate content with automatic handling for both 503 Server Errors and 429 Quota limits
     script_text = None
     max_retries = 3
     for attempt in range(1, max_retries + 1):
@@ -102,21 +101,30 @@ def main():
             )
             script_text = response.text.strip().replace("VOICEOVER:", "").strip()
             break
-        except ServerError:
-            if attempt < max_retries:
-                print(f"Model busy (503). Retrying in 10 seconds...")
+        except (ServerError, ClientError) as e:
+            # Check if it's a quota error (429) or server error (503)
+            is_quota_error = isinstance(e, ClientError) and getattr(e, 'code', 404) == 429
+            
+            if is_quota_error:
+                print("Daily API generation quota reached (429). Switching immediately to backup script fallback!")
+                break
+            elif attempt < max_retries:
+                print(f"API busy or error encountered. Retrying in 10 seconds...")
                 time.sleep(10)
             else:
-                print("Gemini servers busy. Using clean fallback script.")
-                script_text = (
-                    "True leadership doesn't demand the spotlight. It builds the stage. "
-                    "It is a quiet strength—one that listens before it speaks, and measures success "
-                    "not by how high we climb, but by how many we lift along the way. "
-                    "Because when you lead with empathy, you don’t just direct the path. You clear it. "
-                    "To serve isn’t stepping down. It is the highest way to lead."
-                )
+                break
 
-    print(f"Clean Script Text: {script_text}")
+    # Fallback script if API call failed or hit quota limits
+    if not script_text:
+        script_text = (
+            "True leadership doesn't demand the spotlight. It builds the stage. "
+            "It is a quiet strength—one that listens before it speaks, and measures success "
+            "not by how high we climb, but by how many we lift along the way. "
+            "Because when you lead with empathy, you don’t just direct the path. You clear it. "
+            "To serve isn’t stepping down. It is the highest way to lead."
+        )
+
+    print(f"Active Script Text: {script_text}")
 
     # 3. Create Voiceover Audio & Download Assets
     loop = asyncio.get_event_loop()
@@ -131,7 +139,6 @@ def main():
     voiceover_audio = AudioFileClip("voiceover.mp3")
     total_duration = voiceover_audio.duration
 
-    # Set up background video with a slow zoom/motion effect
     if os.path.exists("background.mp4"):
         bg_video = VideoFileClip("background.mp4")
         if bg_video.duration < total_duration:
@@ -153,7 +160,6 @@ def main():
                 bg_music = bg_music.loop(duration=total_duration)
             else:
                 bg_music = bg_music.subclip(0, total_duration)
-            # Lower music volume so it sits quietly in the background (15% volume)
             audio_tracks.append(bg_music.volumex(0.15))
         except Exception as e:
             print(f"Could not process background music: {e}")
@@ -175,7 +181,6 @@ def main():
         if chunk_duration < 1.5:
             chunk_duration = 1.5
 
-        # High-definition text rendering (using a semi-transparent dark backdrop box or high contrast styling for clarity)
         txt_clip = TextClip(
             sentence, 
             fontsize=46, 
@@ -185,7 +190,7 @@ def main():
             method='caption',
             align='center',
             stroke_color='black',
-            stroke_width=2  # Adds a crisp clean outline for high legibility
+            stroke_width=2
         ).set_start(current_time).set_duration(chunk_duration).set_position('center')
 
         caption_clips.append(txt_clip)
@@ -195,7 +200,6 @@ def main():
         excess = current_time - total_duration
         caption_clips[-1] = caption_clips[-1].set_duration(max(1.0, caption_clips[-1].duration - excess))
 
-    # Composite final video
     video = CompositeVideoClip([bg_clip] + caption_clips)
     video = video.set_audio(final_audio)
 
