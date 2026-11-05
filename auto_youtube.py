@@ -7,7 +7,7 @@ import moviepy.config as conf
 # Force MoviePy to locate ImageMagick on the Linux GitHub runner
 conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
-from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip
+from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip, ColorClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -15,7 +15,7 @@ import edge_tts
 
 VOICE = "en-US-ChristopherNeural"
 
-# Rotation pool of fresh, unique, high-impact Servant Leadership scripts for automated runs
+# Rotation pool of fresh, unique Servant Leadership scripts
 SERVANT_LEADERSHIP_SCRIPTS = [
     (
         "The Quiet Elevation",
@@ -59,15 +59,12 @@ SERVANT_LEADERSHIP_SCRIPTS = [
     )
 ]
 
-# A pool of verified, high-definition, scenic natural landscape background video URLs
+# Highly reliable direct-download stock landscape video URLs
 BACKGROUND_VIDEO_URLS = [
     "https://assets.mixkit.co/videos/preview/mixkit-sun-shining-through-the-trees-of-a-forest-4355-large.mp4",
-    "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-pine-forest-during-sunset-41650-large.mp4",
-    "https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-5296-large.mp4",
-    "https://assets.mixkit.co/videos/preview/mixkit-waterfall-in-forest-surrounded-by-greenery-1215-large.mp4"
+    "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-pine-forest-during-sunset-41650-large.mp4"
 ]
 
-# Royalty-free soft ambient background music loop
 BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
 
 async def generate_voiceover(text, output_filename="voiceover.mp3"):
@@ -79,9 +76,21 @@ async def generate_voiceover(text, output_filename="voiceover.mp3"):
 def download_file(url, output_filename):
     print(f"Downloading asset from {url}...")
     try:
-        urllib.request.urlretrieve(url, output_filename)
-        print(f"Successfully downloaded {output_filename}")
-        return True
+        # Add User-Agent header so the CDN doesn't block the request
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        )
+        with urllib.request.urlopen(req) as response, open(output_filename, 'wb') as out_file:
+            out_file.write(response.read())
+        
+        # Verify file actually downloaded and isn't empty
+        if os.path.exists(output_filename) and os.path.getsize(output_filename) > 10000:
+            print(f"Successfully downloaded {output_filename} ({os.path.getsize(output_filename)} bytes)")
+            return True
+        else:
+            print(f"Downloaded file {output_filename} is too small or empty.")
+            return False
     except Exception as e:
         print(f"Failed to download {output_filename}: {e}")
         return False
@@ -125,38 +134,45 @@ def upload_to_youtube(file_path, title, description):
 def main():
     print("Starting YouTube automation script...")
 
-    # 1. Pick a fresh, unique script and background video for this automation run
+    # 1. Pick a fresh script and background video
     video_title, script_text = random.choice(SERVANT_LEADERSHIP_SCRIPTS)
     selected_bg_url = random.choice(BACKGROUND_VIDEO_URLS)
 
     print(f"Selected Video Title: {video_title}")
     print(f"Selected Script: {script_text[:60]}...")
 
-    # 2. Create Voiceover Audio & Download Assets
+    # 2. Generate Voiceover & Download Assets
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
 
-    download_file(selected_bg_url, "background.mp4")
+    video_downloaded = download_file(selected_bg_url, "background.mp4")
     download_file(BACKGROUND_MUSIC_URL, "bg_music.ogg")
 
-    # 3. Render video with MoviePy (Crisp HD Text, Scenic Video Motion, and Audio Mixing)
+    # 3. Render video with MoviePy
     print("Starting video composition with MoviePy...")
     
     voiceover_audio = AudioFileClip("voiceover.mp3")
     total_duration = voiceover_audio.duration
 
-    # Setup background video with a slow, cinematic zoom effect
-    if os.path.exists("background.mp4"):
-        bg_video = VideoFileClip("background.mp4")
-        if bg_video.duration < total_duration:
-            loops_needed = int(total_duration // bg_video.duration) + 1
-            bg_video = bg_video.loop(n=loops_needed)
-        
-        bg_clip = bg_video.subclip(0, total_duration).resize(lambda t: 1.0 + 0.04 * (t / total_duration))
-        bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
-    else:
-        from moviepy.editor import ColorClip
-        bg_clip = ColorClip(size=(1280, 720), color=(15, 23, 42), duration=total_duration)
+    # Setup background video or fallback to an elegant warm gradient/colored background if download fails
+    bg_clip = None
+    if video_downloaded:
+        try:
+            bg_video = VideoFileClip("background.mp4")
+            if bg_video.duration < total_duration:
+                loops_needed = int(total_duration // bg_video.duration) + 1
+                bg_video = bg_video.loop(n=loops_needed)
+            
+            bg_clip = bg_video.subclip(0, total_duration).resize(lambda t: 1.0 + 0.04 * (t / total_duration))
+            bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
+            print("Successfully loaded background video clip!")
+        except Exception as e:
+            print(f"Error processing background video file: {e}")
+
+    # Fallback to an aesthetic deep forest green/teal background if video clip couldn't load
+    if bg_clip is None:
+        print("Using elegant solid background fallback.")
+        bg_clip = ColorClip(size=(1280, 720), color=(10, 30, 20), duration=total_duration)
 
     # Mix Voiceover with Soft Background Music
     audio_tracks = [voiceover_audio.volumex(1.0)]
@@ -188,7 +204,6 @@ def main():
         if chunk_duration < 1.5:
             chunk_duration = 1.5
 
-        # HIGH RESOLUTION TEXT FIX: Using larger font size, high-contrast colors, and bold stroke for maximum clarity
         txt_clip = TextClip(
             sentence, 
             fontsize=64, 
@@ -220,7 +235,7 @@ def main():
     )
     print("Video generated and saved successfully as final_video.mp4!")
 
-    # 4. Upload to YouTube with fresh titles and tags
+    # 4. Upload to YouTube
     print("Starting YouTube upload process...")
     upload_to_youtube(
         file_path="final_video.mp4", 
