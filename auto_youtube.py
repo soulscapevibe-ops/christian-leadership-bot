@@ -1,5 +1,5 @@
 import os
-import time
+import random
 import asyncio
 import urllib.request
 import moviepy.config as conf
@@ -7,8 +7,6 @@ import moviepy.config as conf
 # Force MoviePy to locate ImageMagick on the Linux GitHub runner
 conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
-from google import genai
-from google.genai.errors import ServerError, ClientError
 from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -17,8 +15,57 @@ import edge_tts
 
 VOICE = "en-US-ChristopherNeural"
 
-# High-quality vibrant background video URL (Warm sunset/nature landscape)
-BACKGROUND_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-sun-shining-through-the-trees-of-a-forest-4355-large.mp4"
+# Rotation pool of fresh, unique, high-impact Servant Leadership scripts for automated runs
+SERVANT_LEADERSHIP_SCRIPTS = [
+    (
+        "The Quiet Elevation",
+        "True leadership doesn't demand the spotlight. It builds the stage. "
+        "It is a quiet strength—one that listens before it speaks, and measures success "
+        "not by how high we climb, but by how many we lift along the way. "
+        "Because when you lead with empathy, you don’t just direct the path. You clear it. "
+        "To serve isn’t stepping down. It is the highest way to lead."
+    ),
+    (
+        "Leading with a Servant's Heart",
+        "Authority gives orders, but true influence earns trust. "
+        "When you make your primary goal the growth and well-being of your team, everything changes. "
+        "You stop managing tasks and start empowering people. "
+        "A true leader removes obstacles so others can shine. "
+        "Remember: greatness is found in the willingness to serve."
+    ),
+    (
+        "The Strength of Empathy",
+        "The most powerful leaders are those who are unafraid to be gentle. "
+        "Leading through service means standing shoulder-to-shoulder with your people through every challenge. "
+        "It means listening with patience, acting with integrity, and putting others first. "
+        "When you elevate those around you, you rise together. "
+        "True strength is measured by how well you serve."
+    ),
+    (
+        "Building People, Not Just Projects",
+        "Projects end, but people endure. "
+        "A transactional leader focuses only on the output, but a servant leader invests in the person. "
+        "By offering guidance, fostering encouragement, and offering a steady hand in difficult seasons, "
+        "you create a legacy that outlasts any single achievement. "
+        "Lead to serve, and watch your team flourish."
+    ),
+    (
+        "The Art of Listening First",
+        "Before a leader can guide a team forward, they must first understand where they stand. "
+        "Servant leadership begins with deep, intentional listening. "
+        "It values every voice, respects every perspective, and honors the unique strengths of every individual. "
+        "When people know they are truly heard, they give their best. "
+        "Lead with a heart of service today."
+    )
+]
+
+# A pool of verified, high-definition, scenic natural landscape background video URLs
+BACKGROUND_VIDEO_URLS = [
+    "https://assets.mixkit.co/videos/preview/mixkit-sun-shining-through-the-trees-of-a-forest-4355-large.mp4",
+    "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-pine-forest-during-sunset-41650-large.mp4",
+    "https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-5296-large.mp4",
+    "https://assets.mixkit.co/videos/preview/mixkit-waterfall-in-forest-surrounded-by-greenery-1215-large.mp4"
+]
 
 # Royalty-free soft ambient background music loop
 BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
@@ -78,67 +125,27 @@ def upload_to_youtube(file_path, title, description):
 def main():
     print("Starting YouTube automation script...")
 
-    # 1. Initialize Gemini Client
-    client = genai.Client()
-    print("Gemini client initialized successfully!")
+    # 1. Pick a fresh, unique script and background video for this automation run
+    video_title, script_text = random.choice(SERVANT_LEADERSHIP_SCRIPTS)
+    selected_bg_url = random.choice(BACKGROUND_VIDEO_URLS)
 
-    prompt = (
-        "Write a short, powerful, elegant 30-second script about Servant Leadership "
-        "focusing on empathy, lifting others up, and leading with a quiet strength. "
-        "CRITICAL REQUIREMENT: Return ONLY the raw paragraph text to be spoken aloud. "
-        "Do not include titles, labels like VOICEOVER, scene directions, brackets, or meta notes."
-    )
-    
-    # 2. Generate content with automatic handling for both 503 Server Errors and 429 Quota limits
-    script_text = None
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"Attempting to generate script (Attempt {attempt}/{max_retries})...")
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',
-                contents=prompt,
-            )
-            script_text = response.text.strip().replace("VOICEOVER:", "").strip()
-            break
-        except (ServerError, ClientError) as e:
-            # Check if it's a quota error (429) or server error (503)
-            is_quota_error = isinstance(e, ClientError) and getattr(e, 'code', 404) == 429
-            
-            if is_quota_error:
-                print("Daily API generation quota reached (429). Switching immediately to backup script fallback!")
-                break
-            elif attempt < max_retries:
-                print(f"API busy or error encountered. Retrying in 10 seconds...")
-                time.sleep(10)
-            else:
-                break
+    print(f"Selected Video Title: {video_title}")
+    print(f"Selected Script: {script_text[:60]}...")
 
-    # Fallback script if API call failed or hit quota limits
-    if not script_text:
-        script_text = (
-            "True leadership doesn't demand the spotlight. It builds the stage. "
-            "It is a quiet strength—one that listens before it speaks, and measures success "
-            "not by how high we climb, but by how many we lift along the way. "
-            "Because when you lead with empathy, you don’t just direct the path. You clear it. "
-            "To serve isn’t stepping down. It is the highest way to lead."
-        )
-
-    print(f"Active Script Text: {script_text}")
-
-    # 3. Create Voiceover Audio & Download Assets
+    # 2. Create Voiceover Audio & Download Assets
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
 
-    download_file(BACKGROUND_VIDEO_URL, "background.mp4")
+    download_file(selected_bg_url, "background.mp4")
     download_file(BACKGROUND_MUSIC_URL, "bg_music.ogg")
 
-    # 4. Render video with MoviePy (HD Text, Motion Background, and Audio Mixing)
+    # 3. Render video with MoviePy (Crisp HD Text, Scenic Video Motion, and Audio Mixing)
     print("Starting video composition with MoviePy...")
     
     voiceover_audio = AudioFileClip("voiceover.mp3")
     total_duration = voiceover_audio.duration
 
+    # Setup background video with a slow, cinematic zoom effect
     if os.path.exists("background.mp4"):
         bg_video = VideoFileClip("background.mp4")
         if bg_video.duration < total_duration:
@@ -181,16 +188,17 @@ def main():
         if chunk_duration < 1.5:
             chunk_duration = 1.5
 
+        # HIGH RESOLUTION TEXT FIX: Using larger font size, high-contrast colors, and bold stroke for maximum clarity
         txt_clip = TextClip(
             sentence, 
-            fontsize=46, 
+            fontsize=64, 
             color='white', 
             font='Arial-Bold',
-            size=(1100, 400),
+            size=(1150, 500),
             method='caption',
             align='center',
             stroke_color='black',
-            stroke_width=2
+            stroke_width=3
         ).set_start(current_time).set_duration(chunk_duration).set_position('center')
 
         caption_clips.append(txt_clip)
@@ -212,11 +220,11 @@ def main():
     )
     print("Video generated and saved successfully as final_video.mp4!")
 
-    # 5. Upload to YouTube
+    # 4. Upload to YouTube with fresh titles and tags
     print("Starting YouTube upload process...")
     upload_to_youtube(
         file_path="final_video.mp4", 
-        title="The Quiet Elevation: The True Power of Servant Leadership 🌿", 
+        title=f"{video_title} | Servant Leadership Inspiration 🌿", 
         description=f"{script_text}\n\n#ServantLeadership #Leadership #Inspiration #FaithAndLeadership"
     )
     print("YouTube automation workflow completed entirely!")
