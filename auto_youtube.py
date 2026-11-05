@@ -12,11 +12,11 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import edge_tts
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 VOICE = "en-US-ChristopherNeural"
 
-# Rotation pool of fresh Servant Leadership scripts paired with custom SEO metadata and thumbnail themes
+# Rotation pool with custom thumbnail text and matching high-res scenic image URLs
 SERVANT_LEADERSHIP_LIBRARY = [
     {
         "title": "The Quiet Elevation | The Power of Servant Leadership 🌿",
@@ -29,8 +29,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "servant leadership, quiet strength, leadership inspiration, empathetic leadership, Christian leadership, lead to serve",
         "hashtags": "#ServantLeadership #LeadershipInspiration #QuietStrength #EmpathyInLeadership #FaithAndLeadership",
-        "thumb_text": "THE QUIET\nELEVATION",
-        "thumb_bg": (15, 23, 42)     # Deep Navy
+        "thumb_text": "LIFT OTHERS",
+        "thumb_bg_image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80" # Scenic mountain landscape
     },
     {
         "title": "Leading with a Servant's Heart | Empower Your Team 🌟",
@@ -43,8 +43,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "servant heart, empowering people, leadership trust, team growth, servant leadership principles, inspiring leaders",
         "hashtags": "#ServantHeart #EmpowerOthers #LeadershipMindset #ServantLeadership #TeamBuilding",
-        "thumb_text": "SERVANT'S\nHEART",
-        "thumb_bg": (20, 40, 30)     # Deep Forest Green
+        "thumb_text": "THE HIGHEST\nWAY",
+        "thumb_bg_image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1280&q=80" # Warm study/desk aesthetic
     },
     {
         "title": "The Strength of Empathy in Leadership 🌱",
@@ -57,43 +57,14 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "empathy in leadership, gentle strength, leading with integrity, supportive leadership, servant leadership motivation",
         "hashtags": "#Empathy #LeadershipMotivation #ServantLeadership #LeadingWithGrace #InspirationalQuotes",
-        "thumb_text": "STRENGTH OF\nEMPATHY",
-        "thumb_bg": (30, 25, 45)     # Deep Slate Purple
-    },
-    {
-        "title": "Building People, Not Just Projects | Leadership Focus 💡",
-        "script": (
-            "Projects end, but people endure. "
-            "A transactional leader focuses only on the output, but a servant leader invests in the person. "
-            "By offering guidance, fostering encouragement, and offering a steady hand in difficult seasons, "
-            "you create a legacy that outlasts any single achievement. "
-            "Lead to serve, and watch your team flourish."
-        ),
-        "keywords": "building people, legacy leadership, people over projects, investing in teams, servant leadership coaching",
-        "hashtags": "#PeopleFirst #LeadershipLegacy #ServantLeadership #TeamSuccess #InspirationalLeadership",
-        "thumb_text": "BUILDING\nPEOPLE",
-        "thumb_bg": (40, 25, 20)     # Deep Bronze
-    },
-    {
-        "title": "The Art of Listening First | Core Leadership Skill 🎧",
-        "script": (
-            "Before a leader can guide a team forward, they must first understand where they stand. "
-            "Servant leadership begins with deep, intentional listening. "
-            "It values every voice, respects every perspective, and honors the unique strengths of every individual. "
-            "When people know they are truly heard, they give their best. "
-            "Lead with a heart of service today."
-        ),
-        "keywords": "listening first, intentional listening, respectful leadership, valuing every voice, servant leadership fundamentals",
-        "hashtags": "#ActiveListening #LeadershipSkills #ServantLeadership #ValuePeople #GrowthMindset",
-        "thumb_text": "THE ART OF\nLISTENING",
-        "thumb_bg": (20, 35, 50)     # Deep Ocean Blue
+        "thumb_text": "QUIET STRENGTH",
+        "thumb_bg_image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&q=80" # Sunlit forest pathway
     }
 ]
 
 BACKGROUND_VIDEO_URLS = [
     "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
 ]
 
 BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
@@ -104,42 +75,51 @@ async def generate_voiceover(text, output_filename="voiceover.mp3"):
     await communicate.save(output_filename)
     print("Voiceover generated successfully!")
 
-def generate_thumbnail(thumb_text, bg_color, output_filename="thumbnail.jpg"):
-    print("Generating SEO thumbnail...")
-    # YouTube recommended dimensions: 1280x720
+def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thumbnail.jpg"):
+    print("Generating custom photographic SEO thumbnail...")
+    raw_img_path = "raw_thumb_bg.jpg"
+    
+    # 1. Download the scenic background image for the thumbnail
+    success = download_file(image_url, raw_img_path)
+    
     width, height = 1280, 720
-    image = Image.new("RGB", (width, height), color=bg_color)
+    if success and os.path.exists(raw_img_path):
+        image = Image.open(raw_img_path).convert("RGB")
+        image = image.resize((width, height), Image.Resampling.LANCZOS)
+        
+        # Apply a subtle dark gradient/dimmer overlay so the white text pops clearly
+        enhancer = ImageEnhance.Brightness(image)
+        image = enhancer.enhance(0.65) # Darken slightly for readability
+    else:
+        # Fallback solid background if image download fails
+        image = Image.new("RGB", (width, height), color=(15, 23, 42))
+
     draw = ImageDraw.Draw(image)
 
-    # Add a subtle glowing border/frame for professional contrast
-    draw.rectangle([20, 20, width - 20, height - 20], outline=(255, 255, 255), width=4)
-
-    # Load a standard system font or fallback gracefully
+    # Try loading a bold font, fallback to default if unavailable
     try:
-        # Linux runner font path check
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 90)
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 85)
     except IOError:
         font = ImageFont.load_default()
 
-    # Center text dynamically
-    # Use textbbox for modern Pillow versions
+    # Center text calculation
     try:
-        bbox = draw.multiline_textbbox((0, 0), thumb_text, font=font, spacing=20, align="center")
+        bbox = draw.multiline_textbbox((0, 0), thumb_text, font=font, spacing=15, align="center")
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
     except AttributeError:
-        text_width, text_height = 600, 200
+        text_width, text_height = 500, 150
 
     x = (width - text_width) / 2
     y = (height - text_height) / 2
 
-    # Draw subtle drop shadow for high readability
-    draw.multiline_text((x + 4, y + 4), thumb_text, font=font, fill=(0, 0, 0), spacing=20, align="center")
-    # Draw main crisp white text
-    draw.multiline_text((x, y), thumb_text, font=font, fill=(255, 255, 255), spacing=20, align="center")
+    # Draw soft shadow for professional depth matching your uploaded style
+    draw.multiline_text((x + 3, y + 3), thumb_text, font=font, fill=(0, 0, 0), spacing=15, align="center")
+    # Draw crisp white text
+    draw.multiline_text((x, y), thumb_text, font=font, fill=(255, 255, 255), spacing=15, align="center")
 
     image.save(output_filename, "JPEG", quality=95)
-    print("SEO thumbnail generated successfully as thumbnail.jpg!")
+    print("Photographic SEO thumbnail created successfully!")
 
 def download_file(url, output_filename):
     print(f"Downloading asset from {url}...")
@@ -151,12 +131,9 @@ def download_file(url, output_filename):
         with urllib.request.urlopen(req) as response, open(output_filename, 'wb') as out_file:
             out_file.write(response.read())
         
-        if os.path.exists(output_filename) and os.path.getsize(output_filename) > 50000:
-            print(f"Successfully downloaded {output_filename}")
+        if os.path.exists(output_filename) and os.path.getsize(output_filename) > 10000:
             return True
-        else:
-            print(f"Downloaded file {output_filename} is invalid.")
-            return False
+        return False
     except Exception as e:
         print(f"Failed to download {output_filename}: {e}")
         return False
@@ -174,7 +151,6 @@ def upload_to_youtube(video_path, thumb_path, title, description, tags):
     
     youtube = build("youtube", "v3", credentials=credentials)
 
-    # 1. Upload Video
     body = {
         "snippet": {
             "title": title,
@@ -200,43 +176,39 @@ def upload_to_youtube(video_path, thumb_path, title, description, tags):
     video_id = response.get('id')
     print(f"Video successfully uploaded! YouTube Video ID: {video_id}")
 
-    # 2. Upload Custom Thumbnail
     if os.path.exists(thumb_path):
-        print("Uploading custom SEO thumbnail...")
+        print("Uploading custom photographic thumbnail...")
         try:
             youtube.thumbnails().set(
                 videoId=video_id,
                 media_body=MediaFileUpload(thumb_path)
             ).execute()
-            print("Custom SEO thumbnail uploaded successfully!")
+            print("Custom thumbnail assigned successfully via YouTube API!")
         except Exception as e:
             print(f"Failed to upload thumbnail: {e}")
 
 def main():
     print("Starting YouTube automation script...")
 
-    # 1. Select content bundle
     content_item = random.choice(SERVANT_LEADERSHIP_LIBRARY)
     video_title = content_item["title"]
     script_text = content_item["script"]
     video_keywords = content_item["keywords"]
     video_hashtags = content_item["hashtags"]
     thumb_text = content_item["thumb_text"]
-    thumb_bg = content_item["thumb_bg"]
+    thumb_bg_image = content_item["thumb_bg_image"]
 
     selected_bg_url = random.choice(BACKGROUND_VIDEO_URLS)
 
     print(f"Selected Title: {video_title}")
 
-    # 2. Generate Voiceover, Thumbnail & Download Assets
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
 
-    generate_thumbnail(thumb_text, thumb_bg, "thumbnail.jpg")
+    generate_photographic_thumbnail(thumb_bg_image, thumb_text, "thumbnail.jpg")
     video_downloaded = download_file(selected_bg_url, "background.mp4")
     download_file(BACKGROUND_MUSIC_URL, "bg_music.ogg")
 
-    # 3. Render video with MoviePy
     print("Starting video composition with MoviePy...")
     
     voiceover_audio = AudioFileClip("voiceover.mp3")
@@ -258,7 +230,6 @@ def main():
     if bg_clip is None:
         bg_clip = ColorClip(size=(1280, 720), color=(20, 35, 50), duration=total_duration)
 
-    # Mix Voiceover with Soft Background Music
     audio_tracks = [voiceover_audio.volumex(1.0)]
     if os.path.exists("bg_music.ogg"):
         try:
@@ -273,7 +244,6 @@ def main():
 
     final_audio = CompositeAudioClip(audio_tracks)
 
-    # Break script into sentence chunks for sequential high-definition captions
     raw_sentences = [s.strip() for s in script_text.replace("—", ", ").split('.') if s.strip()]
     total_words = sum(len(s.split()) for s in raw_sentences)
     if total_words == 0:
@@ -319,7 +289,6 @@ def main():
     )
     print("Video generated successfully!")
 
-    # 4. Upload Video and Custom Thumbnail to YouTube
     print("Starting YouTube upload and thumbnail assignment...")
     full_description = f"{script_text}\n\n{video_hashtags}"
     
