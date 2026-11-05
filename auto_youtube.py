@@ -71,8 +71,8 @@ def main():
         "Keep it concise, inspiring, and professional."
     )
     
-    # 2. Generate content with automatic retry logic for 503 errors
-    response = None
+    # 2. Try generating content with retries; fallback gracefully if servers remain busy
+    script_text = None
     max_retries = 3
     for attempt in range(1, max_retries + 1):
         try:
@@ -81,15 +81,20 @@ def main():
                 model='gemini-3.8-flash',
                 contents=prompt,
             )
+            script_text = response.text.strip()
             break
-        except ServerError as e:
-            if attempt == max_retries:
-                raise e
-            print(f"Model busy (503). Retrying in 10 seconds...")
-            time.sleep(10)
+        except ServerError:
+            if attempt < max_retries:
+                print(f"Model busy (503). Retrying in 10 seconds...")
+                time.sleep(10)
+            else:
+                print("Gemini servers are experiencing extended high demand. Switching to backup script fallback!")
+                script_text = (
+                    "True leadership is not about being in charge. It is about taking care of those in your charge. "
+                    "When we lead with a servant's heart, we lift others up, build genuine trust, and create a lasting impact."
+                )
 
-    script_text = response.text.strip()
-    print(f"Generated Script: {script_text[:60]}...")
+    print(f"Using Script: {script_text[:60]}...")
 
     # 3. Create the Voiceover Audio asynchronously
     loop = asyncio.get_event_loop()
