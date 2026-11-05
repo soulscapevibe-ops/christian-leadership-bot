@@ -15,54 +15,75 @@ import edge_tts
 
 VOICE = "en-US-ChristopherNeural"
 
-# Rotation pool of fresh, unique Servant Leadership scripts
-SERVANT_LEADERSHIP_SCRIPTS = [
-    (
-        "The Quiet Elevation",
-        "True leadership doesn't demand the spotlight. It builds the stage. "
-        "It is a quiet strength—one that listens before it speaks, and measures success "
-        "not by how high we climb, but by how many we lift along the way. "
-        "Because when you lead with empathy, you don’t just direct the path. You clear it. "
-        "To serve isn’t stepping down. It is the highest way to lead."
-    ),
-    (
-        "Leading with a Servant's Heart",
-        "Authority gives orders, but true influence earns trust. "
-        "When you make your primary goal the growth and well-being of your team, everything changes. "
-        "You stop managing tasks and start empowering people. "
-        "A true leader removes obstacles so others can shine. "
-        "Remember: greatness is found in the willingness to serve."
-    ),
-    (
-        "The Strength of Empathy",
-        "The most powerful leaders are those who are unafraid to be gentle. "
-        "Leading through service means standing shoulder-to-shoulder with your people through every challenge. "
-        "It means listening with patience, acting with integrity, and putting others first. "
-        "When you elevate those around you, you rise together. "
-        "True strength is measured by how well you serve."
-    ),
-    (
-        "Building People, Not Just Projects",
-        "Projects end, but people endure. "
-        "A transactional leader focuses only on the output, but a servant leader invests in the person. "
-        "By offering guidance, fostering encouragement, and offering a steady hand in difficult seasons, "
-        "you create a legacy that outlasts any single achievement. "
-        "Lead to serve, and watch your team flourish."
-    ),
-    (
-        "The Art of Listening First",
-        "Before a leader can guide a team forward, they must first understand where they stand. "
-        "Servant leadership begins with deep, intentional listening. "
-        "It values every voice, respects every perspective, and honors the unique strengths of every individual. "
-        "When people know they are truly heard, they give their best. "
-        "Lead with a heart of service today."
-    )
+# Rotation pool of fresh Servant Leadership scripts paired with custom SEO metadata
+SERVANT_LEADERSHIP_LIBRARY = [
+    {
+        "title": "The Quiet Elevation | The Power of Servant Leadership 🌿",
+        "script": (
+            "True leadership doesn't demand the spotlight. It builds the stage. "
+            "It is a quiet strength—one that listens before it speaks, and measures success "
+            "not by how high we climb, but by how many we lift along the way. "
+            "Because when you lead with empathy, you don’t just direct the path. You clear it. "
+            "To serve isn’t stepping down. It is the highest way to lead."
+        ),
+        "keywords": "servant leadership, quiet strength, leadership inspiration, empathetic leadership, Christian leadership, lead to serve",
+        "hashtags": "#ServantLeadership #LeadershipInspiration #QuietStrength #EmpathyInLeadership #FaithAndLeadership"
+    },
+    {
+        "title": "Leading with a Servant's Heart | Empower Your Team 🌟",
+        "script": (
+            "Authority gives orders, but true influence earns trust. "
+            "When you make your primary goal the growth and well-being of your team, everything changes. "
+            "You stop managing tasks and start empowering people. "
+            "A true leader removes obstacles so others can shine. "
+            "Remember: greatness is found in the willingness to serve."
+        ),
+        "keywords": "servant heart, empowering people, leadership trust, team growth, servant leadership principles, inspiring leaders",
+        "hashtags": "#ServantHeart #EmpowerOthers #LeadershipMindset #ServantLeadership #TeamBuilding"
+    },
+    {
+        "title": "The Strength of Empathy in Leadership 🌱",
+        "script": (
+            "The most powerful leaders are those who are unafraid to be gentle. "
+            "Leading through service means standing shoulder-to-shoulder with your people through every challenge. "
+            "It means listening with patience, acting with integrity, and putting others first. "
+            "When you elevate those around you, you rise together. "
+            "True strength is measured by how well you serve."
+        ),
+        "keywords": "empathy in leadership, gentle strength, leading with integrity, supportive leadership, servant leadership motivation",
+        "hashtags": "#Empathy #LeadershipMotivation #ServantLeadership #LeadingWithGrace #InspirationalQuotes"
+    },
+    {
+        "title": "Building People, Not Just Projects | Leadership Focus 💡",
+        "script": (
+            "Projects end, but people endure. "
+            "A transactional leader focuses only on the output, but a servant leader invests in the person. "
+            "By offering guidance, fostering encouragement, and offering a steady hand in difficult seasons, "
+            "you create a legacy that outlasts any single achievement. "
+            "Lead to serve, and watch your team flourish."
+        ),
+        "keywords": "building people, legacy leadership, people over projects, investing in teams, servant leadership coaching",
+        "hashtags": "#PeopleFirst #LeadershipLegacy #ServantLeadership #TeamSuccess #InspirationalLeadership"
+    },
+    {
+        "title": "The Art of Listening First | Core Leadership Skill 🎧",
+        "script": (
+            "Before a leader can guide a team forward, they must first understand where they stand. "
+            "Servant leadership begins with deep, intentional listening. "
+            "It values every voice, respects every perspective, and honors the unique strengths of every individual. "
+            "When people know they are truly heard, they give their best. "
+            "Lead with a heart of service today."
+        ),
+        "keywords": "listening first, intentional listening, respectful leadership, valuing every voice, servant leadership fundamentals",
+        "hashtags": "#ActiveListening #LeadershipSkills #ServantLeadership #ValuePeople #GrowthMindset"
+    }
 ]
 
-# Highly reliable direct-download stock landscape video URLs
+# Highly stable, direct-download raw MP4 stock landscape background videos
 BACKGROUND_VIDEO_URLS = [
-    "https://assets.mixkit.co/videos/preview/mixkit-sun-shining-through-the-trees-of-a-forest-4355-large.mp4",
-    "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-pine-forest-during-sunset-41650-large.mp4"
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
 ]
 
 BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
@@ -76,7 +97,6 @@ async def generate_voiceover(text, output_filename="voiceover.mp3"):
 def download_file(url, output_filename):
     print(f"Downloading asset from {url}...")
     try:
-        # Add User-Agent header so the CDN doesn't block the request
         req = urllib.request.Request(
             url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
@@ -84,18 +104,17 @@ def download_file(url, output_filename):
         with urllib.request.urlopen(req) as response, open(output_filename, 'wb') as out_file:
             out_file.write(response.read())
         
-        # Verify file actually downloaded and isn't empty
-        if os.path.exists(output_filename) and os.path.getsize(output_filename) > 10000:
+        if os.path.exists(output_filename) and os.path.getsize(output_filename) > 50000:
             print(f"Successfully downloaded {output_filename} ({os.path.getsize(output_filename)} bytes)")
             return True
         else:
-            print(f"Downloaded file {output_filename} is too small or empty.")
+            print(f"Downloaded file {output_filename} is too small or invalid.")
             return False
     except Exception as e:
         print(f"Failed to download {output_filename}: {e}")
         return False
 
-def upload_to_youtube(file_path, title, description):
+def upload_to_youtube(file_path, title, description, tags):
     print("Authenticating with YouTube API...")
     credentials = Credentials(
         token=None,
@@ -112,6 +131,7 @@ def upload_to_youtube(file_path, title, description):
         "snippet": {
             "title": title,
             "description": description,
+            "tags": [tag.strip() for tag in tags.split(',')],
             "categoryId": "22"
         },
         "status": {
@@ -134,11 +154,16 @@ def upload_to_youtube(file_path, title, description):
 def main():
     print("Starting YouTube automation script...")
 
-    # 1. Pick a fresh script and background video
-    video_title, script_text = random.choice(SERVANT_LEADERSHIP_SCRIPTS)
+    # 1. Select a unique content bundle from our library for this run
+    content_item = random.choice(SERVANT_LEADERSHIP_LIBRARY)
+    video_title = content_item["title"]
+    script_text = content_item["script"]
+    video_keywords = content_item["keywords"]
+    video_hashtags = content_item["hashtags"]
+
     selected_bg_url = random.choice(BACKGROUND_VIDEO_URLS)
 
-    print(f"Selected Video Title: {video_title}")
+    print(f"Selected Title: {video_title}")
     print(f"Selected Script: {script_text[:60]}...")
 
     # 2. Generate Voiceover & Download Assets
@@ -154,7 +179,6 @@ def main():
     voiceover_audio = AudioFileClip("voiceover.mp3")
     total_duration = voiceover_audio.duration
 
-    # Setup background video or fallback to an elegant warm gradient/colored background if download fails
     bg_clip = None
     if video_downloaded:
         try:
@@ -169,10 +193,10 @@ def main():
         except Exception as e:
             print(f"Error processing background video file: {e}")
 
-    # Fallback to an aesthetic deep forest green/teal background if video clip couldn't load
+    # Fallback gradient if ever needed
     if bg_clip is None:
-        print("Using elegant solid background fallback.")
-        bg_clip = ColorClip(size=(1280, 720), color=(10, 30, 20), duration=total_duration)
+        print("Using gradient color background fallback.")
+        bg_clip = ColorClip(size=(1280, 720), color=(20, 35, 50), duration=total_duration)
 
     # Mix Voiceover with Soft Background Music
     audio_tracks = [voiceover_audio.volumex(1.0)]
@@ -235,12 +259,15 @@ def main():
     )
     print("Video generated and saved successfully as final_video.mp4!")
 
-    # 4. Upload to YouTube
-    print("Starting YouTube upload process...")
+    # 4. Upload to YouTube with Automated Custom SEO Metadata
+    print("Starting YouTube upload process with automated SEO...")
+    full_description = f"{script_text}\n\n{video_hashtags}"
+    
     upload_to_youtube(
         file_path="final_video.mp4", 
-        title=f"{video_title} | Servant Leadership Inspiration 🌿", 
-        description=f"{script_text}\n\n#ServantLeadership #Leadership #Inspiration #FaithAndLeadership"
+        title=video_title, 
+        description=full_description,
+        tags=video_keywords
     )
     print("YouTube automation workflow completed entirely!")
 
