@@ -9,7 +9,7 @@ conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
 from google import genai
 from google.genai.errors import ServerError
-from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -17,8 +17,12 @@ import edge_tts
 
 VOICE = "en-US-ChristopherNeural"
 
-# High-quality copyright-free background video loop (Calming nature aerial)
-BACKGROUND_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-pine-forest-during-sunset-41650-large.mp4"
+# High-quality vibrant background video URL (Warm sunset/nature landscape)
+BACKGROUND_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-sun-shining-through-the-trees-of-a-forest-4355-large.mp4"
+
+# Royalty-free soft ambient background music loop (Gentle, calm instrumental)
+BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
+# Alternative smooth ambient loop if needed: https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3
 
 async def generate_voiceover(text, output_filename="voiceover.mp3"):
     print("Generating AI voiceover...")
@@ -26,14 +30,14 @@ async def generate_voiceover(text, output_filename="voiceover.mp3"):
     await communicate.save(output_filename)
     print("Voiceover generated successfully!")
 
-def download_background_video(url, output_filename="background.mp4"):
-    print("Downloading background landscape video...")
+def download_file(url, output_filename):
+    print(f"Downloading asset from {url}...")
     try:
         urllib.request.urlretrieve(url, output_filename)
-        print("Background video downloaded successfully!")
+        print(f"Successfully downloaded {output_filename}")
         return True
     except Exception as e:
-        print(f"Failed to download background video: {e}")
+        print(f"Failed to download {output_filename}: {e}")
         return False
 
 def upload_to_youtube(file_path, title, description):
@@ -114,37 +118,50 @@ def main():
 
     print(f"Clean Script Text: {script_text}")
 
-    # 3. Create the Voiceover Audio asynchronously
+    # 3. Create Voiceover Audio & Download Assets
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
 
-    # 4. Download background video loop
-    download_success = download_background_video(BACKGROUND_VIDEO_URL, "background.mp4")
+    download_file(BACKGROUND_VIDEO_URL, "background.mp4")
+    download_file(BACKGROUND_MUSIC_URL, "bg_music.ogg")
 
-    # 5. Render video with MoviePy (Dynamic motion background + timed sequential text clips)
+    # 4. Render video with MoviePy (HD Text, Motion Background, and Audio Mixing)
     print("Starting video composition with MoviePy...")
     
-    audio_clip = AudioFileClip("voiceover.mp3")
-    total_duration = audio_clip.duration
+    voiceover_audio = AudioFileClip("voiceover.mp3")
+    total_duration = voiceover_audio.duration
 
-    if download_success and os.path.exists("background.mp4"):
+    # Set up background video with a slow zoom/motion effect
+    if os.path.exists("background.mp4"):
         bg_video = VideoFileClip("background.mp4")
         if bg_video.duration < total_duration:
             loops_needed = int(total_duration // bg_video.duration) + 1
             bg_video = bg_video.loop(n=loops_needed)
         
-        # Trim to exact duration and add a slow zoom/motion effect (resize slightly over time)
-        bg_clip = bg_video.subclip(0, total_duration).resize(lambda t: 1.0 + 0.03 * (t / total_duration))
+        bg_clip = bg_video.subclip(0, total_duration).resize(lambda t: 1.0 + 0.04 * (t / total_duration))
         bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
     else:
         from moviepy.editor import ColorClip
         bg_clip = ColorClip(size=(1280, 720), color=(15, 23, 42), duration=total_duration)
 
-    # Break script into natural sentence phrases for sequential timed captions
-    # Filter out empty strings
+    # Mix Voiceover with Soft Background Music
+    audio_tracks = [voiceover_audio.volumex(1.0)]
+    if os.path.exists("bg_music.ogg"):
+        try:
+            bg_music = AudioFileClip("bg_music.ogg")
+            if bg_music.duration < total_duration:
+                bg_music = bg_music.loop(duration=total_duration)
+            else:
+                bg_music = bg_music.subclip(0, total_duration)
+            # Lower music volume so it sits quietly in the background (15% volume)
+            audio_tracks.append(bg_music.volumex(0.15))
+        except Exception as e:
+            print(f"Could not process background music: {e}")
+
+    final_audio = CompositeAudioClip(audio_tracks)
+
+    # Break script into sentence chunks for sequential high-definition captions
     raw_sentences = [s.strip() for s in script_text.replace("—", ", ").split('.') if s.strip()]
-    
-    # Calculate duration per sentence chunk based on word counts
     total_words = sum(len(s.split()) for s in raw_sentences)
     if total_words == 0:
         total_words = 1
@@ -154,44 +171,44 @@ def main():
 
     for sentence in raw_sentences:
         sentence_words = len(sentence.split())
-        # Allocate time proportional to sentence length
         chunk_duration = (sentence_words / total_words) * total_duration
-        if chunk_duration < 1.5:  # ensure readability minimum
+        if chunk_duration < 1.5:
             chunk_duration = 1.5
 
-        # Create individual animated text card for this specific phrase
+        # High-definition text rendering (using a semi-transparent dark backdrop box or high contrast styling for clarity)
         txt_clip = TextClip(
             sentence, 
-            fontsize=40, 
+            fontsize=46, 
             color='white', 
             font='Arial-Bold',
             size=(1100, 400),
             method='caption',
-            align='center'
+            align='center',
+            stroke_color='black',
+            stroke_width=2  # Adds a crisp clean outline for high legibility
         ).set_start(current_time).set_duration(chunk_duration).set_position('center')
 
         caption_clips.append(txt_clip)
         current_time += chunk_duration
 
-    # If timing slightly overshoots total duration, adjust the final clip duration
     if caption_clips and current_time > total_duration:
         excess = current_time - total_duration
         caption_clips[-1] = caption_clips[-1].set_duration(max(1.0, caption_clips[-1].duration - excess))
 
-    # Composite background motion video with the sequential timed captions
+    # Composite final video
     video = CompositeVideoClip([bg_clip] + caption_clips)
-    video = video.set_audio(audio_clip)
+    video = video.set_audio(final_audio)
 
     video.write_videofile(
         "final_video.mp4", 
         fps=24, 
         codec='libx264', 
         audio_codec='aac',
-        bitrate="3000k"
+        bitrate="4000k"
     )
     print("Video generated and saved successfully as final_video.mp4!")
 
-    # 6. Upload the polished video package to YouTube
+    # 5. Upload to YouTube
     print("Starting YouTube upload process...")
     upload_to_youtube(
         file_path="final_video.mp4", 
