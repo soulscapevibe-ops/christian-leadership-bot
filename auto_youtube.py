@@ -7,7 +7,7 @@ import moviepy.config as conf
 # Force MoviePy to locate ImageMagick on the Linux GitHub runner
 conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
-from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip, ColorClip
+from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, CompositeAudioClip, ImageClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 VOICE = "en-US-ChristopherNeural"
 
-# Rotation pool with unique thumbnail text per video entry
+# Rotation pool with unique thumbnail text and matching scenic background imagery
 SERVANT_LEADERSHIP_LIBRARY = [
     {
         "title": "The Quiet Elevation | The Power of Servant Leadership 🌿",
@@ -30,7 +30,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "servant leadership, quiet strength, leadership inspiration, empathetic leadership, Christian leadership, lead to serve",
         "hashtags": "#ServantLeadership #LeadershipInspiration #QuietStrength #EmpathyInLeadership #FaithAndLeadership",
         "thumb_text": "LIFT OTHERS",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80"
+        "thumb_bg_image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80",
+        "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
     },
     {
         "title": "Leading with a Servant's Heart | Empower Your Team 🌟",
@@ -44,7 +45,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "servant heart, empowering people, leadership trust, team growth, servant leadership principles, inspiring leaders",
         "hashtags": "#ServantHeart #EmpowerOthers #LeadershipMindset #ServantLeadership #TeamBuilding",
         "thumb_text": "THE HIGHEST WAY",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1280&q=80"
+        "thumb_bg_image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1280&q=80",
+        "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
     },
     {
         "title": "The Strength of Empathy in Leadership 🌱",
@@ -58,7 +60,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "empathy in leadership, gentle strength, leading with integrity, supportive leadership, servant leadership motivation",
         "hashtags": "#Empathy #LeadershipMotivation #ServantLeadership #LeadingWithGrace #InspirationalQuotes",
         "thumb_text": "QUIET STRENGTH",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&q=80"
+        "thumb_bg_image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&q=80",
+        "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
     },
     {
         "title": "Building People, Not Just Projects | Leadership Focus 💡",
@@ -72,7 +75,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "building people, legacy leadership, people over projects, investing in teams, servant leadership coaching",
         "hashtags": "#PeopleFirst #LeadershipLegacy #ServantLeadership #TeamSuccess #InspirationalLeadership",
         "thumb_text": "BUILDING PEOPLE",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&q=80"
+        "thumb_bg_image": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&q=80",
+        "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
     },
     {
         "title": "The Art of Listening First | Core Leadership Skill 🎧",
@@ -86,13 +90,9 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "listening first, intentional listening, respectful leadership, valuing every voice, servant leadership fundamentals",
         "hashtags": "#ActiveListening #LeadershipSkills #ServantLeadership #ValuePeople #GrowthMindset",
         "thumb_text": "LISTEN FIRST",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1280&q=80"
+        "thumb_bg_image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1280&q=80",
+        "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
     }
-]
-
-BACKGROUND_VIDEO_URLS = [
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
 ]
 
 BACKGROUND_MUSIC_URL = "https://actions.google.com/sounds/v1/ambiences/morning_birds.ogg" 
@@ -106,22 +106,18 @@ async def generate_voiceover(text, output_filename="voiceover.mp3"):
 def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thumbnail.jpg"):
     print(f"Generating photographic SEO thumbnail with text: '{thumb_text}'...")
     raw_img_path = "raw_thumb_bg.jpg"
-    
     success = download_file(image_url, raw_img_path)
     
     width, height = 1280, 720
     if success and os.path.exists(raw_img_path):
         image = Image.open(raw_img_path).convert("RGB")
         image = image.resize((width, height), Image.Resampling.LANCZOS)
-        
-        # Dim background slightly for text readability
         enhancer = ImageEnhance.Brightness(image)
         image = enhancer.enhance(0.65)
     else:
         image = Image.new("RGB", (width, height), color=(15, 23, 42))
 
     draw = ImageDraw.Draw(image)
-
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 85)
     except IOError:
@@ -137,7 +133,6 @@ def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thum
     x = (width - text_width) / 2
     y = (height - text_height) / 2
 
-    # Draw soft shadow and crisp white text centered on the thumbnail
     draw.multiline_text((x + 3, y + 3), thumb_text, font=font, fill=(0, 0, 0), spacing=15, align="center")
     draw.multiline_text((x, y), thumb_text, font=font, fill=(255, 255, 255), spacing=15, align="center")
 
@@ -220,17 +215,15 @@ def main():
     video_hashtags = content_item["hashtags"]
     thumb_text = content_item["thumb_text"]
     thumb_bg_image = content_item["thumb_bg_image"]
-
-    selected_bg_url = random.choice(BACKGROUND_VIDEO_URLS)
+    selected_video_url = content_item["video_bg_url"]
 
     print(f"Selected Title: {video_title}")
-    print(f"Selected Thumbnail Text: {thumb_text}")
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
 
     generate_photographic_thumbnail(thumb_bg_image, thumb_text, "thumbnail.jpg")
-    video_downloaded = download_file(selected_bg_url, "background.mp4")
+    video_downloaded = download_file(selected_video_url, "background.mp4")
     download_file(BACKGROUND_MUSIC_URL, "bg_music.ogg")
 
     print("Starting video composition with MoviePy...")
@@ -248,11 +241,23 @@ def main():
             
             bg_clip = bg_video.subclip(0, total_duration).resize(lambda t: 1.0 + 0.04 * (t / total_duration))
             bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
+            print("Successfully loaded moving video background!")
         except Exception as e:
-            print(f"Error processing background video: {e}")
+            print(f"Error processing video background: {e}")
 
+    # ANIMATED NATURE PHOTO FALLBACK: If video loading fails, download the scenic photo and apply a cinematic Ken Burns zoom animation
     if bg_clip is None:
-        bg_clip = ColorClip(size=(1280, 720), color=(20, 35, 50), duration=total_duration)
+        print("Video background unavailable. Applying animated nature photo fallback...")
+        photo_path = "animated_bg_photo.jpg"
+        if download_file(thumb_bg_image, photo_path):
+            try:
+                # Create an animated zoom/pan effect from the still nature photo
+                bg_clip = ImageClip(photo_path).set_duration(total_duration)
+                bg_clip = bg_clip.resize(lambda t: 1.0 + 0.08 * (t / total_duration))
+                bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
+                print("Successfully created animated nature photo background!")
+            except Exception as ex:
+                print(f"Photo animation fallback error: {ex}")
 
     audio_tracks = [voiceover_audio.volumex(1.0)]
     if os.path.exists("bg_music.ogg"):
