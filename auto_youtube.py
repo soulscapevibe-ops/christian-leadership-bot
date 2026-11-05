@@ -9,7 +9,7 @@ conf.IMAGEMAGICK_BINARY = "/usr/bin/convert"
 
 from google import genai
 from google.genai.errors import ServerError
-from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip
+from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip, concatenate_videoclips
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -17,7 +17,7 @@ import edge_tts
 
 VOICE = "en-US-ChristopherNeural"
 
-# Direct copyright-free background video URL (A soothing nature/landscape loop)
+# High-quality copyright-free background video loop (Calming nature aerial)
 BACKGROUND_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-pine-forest-during-sunset-41650-large.mp4"
 
 async def generate_voiceover(text, output_filename="voiceover.mp3"):
@@ -79,7 +79,6 @@ def main():
     client = genai.Client()
     print("Gemini client initialized successfully!")
 
-    # Strict prompt to ensure Gemini outputs ONLY the pure voiceover text with zero fluff
     prompt = (
         "Write a short, powerful, elegant 30-second script about Servant Leadership "
         "focusing on empathy, lifting others up, and leading with a quiet strength. "
@@ -122,37 +121,65 @@ def main():
     # 4. Download background video loop
     download_success = download_background_video(BACKGROUND_VIDEO_URL, "background.mp4")
 
-    # 5. Render video with MoviePy (Combining background video, voiceover, and matched text captions)
+    # 5. Render video with MoviePy (Dynamic motion background + timed sequential text clips)
     print("Starting video composition with MoviePy...")
     
     audio_clip = AudioFileClip("voiceover.mp3")
-    duration = audio_clip.duration
+    total_duration = audio_clip.duration
 
     if download_success and os.path.exists("background.mp4"):
-        # Load background video, loop it if it's shorter than the audio, and trim to exact audio length
         bg_video = VideoFileClip("background.mp4")
-        if bg_video.duration < duration:
-            # Loop video to match audio length if necessary
-            loops_needed = int(duration // bg_video.duration) + 1
+        if bg_video.duration < total_duration:
+            loops_needed = int(total_duration // bg_video.duration) + 1
             bg_video = bg_video.loop(n=loops_needed)
-        bg_clip = bg_video.subclip(0, duration).resize(height=720) # ensure clean fit
+        
+        # Trim to exact duration and add a slow zoom/motion effect (resize slightly over time)
+        bg_clip = bg_video.subclip(0, total_duration).resize(lambda t: 1.0 + 0.03 * (t / total_duration))
+        bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
     else:
-        # Fallback safety if download ever hiccups
         from moviepy.editor import ColorClip
-        bg_clip = ColorClip(size=(1280, 720), color=(15, 23, 42), duration=duration)
+        bg_clip = ColorClip(size=(1280, 720), color=(15, 23, 42), duration=total_duration)
 
-    # Create the clean on-screen caption matching the exact clean voiceover words
-    txt_clip = TextClip(
-        script_text, 
-        fontsize=36, 
-        color='white', 
-        font='Arial-Bold',
-        size=(1100, 560),
-        method='caption'
-    ).set_duration(duration).set_position('center')
+    # Break script into natural sentence phrases for sequential timed captions
+    # Filter out empty strings
+    raw_sentences = [s.strip() for s in script_text.replace("—", ", ").split('.') if s.strip()]
+    
+    # Calculate duration per sentence chunk based on word counts
+    total_words = sum(len(s.split()) for s in raw_sentences)
+    if total_words == 0:
+        total_words = 1
 
-    # Composite background video and text overlay, then add the voiceover audio
-    video = CompositeVideoClip([bg_clip, txt_clip])
+    caption_clips = []
+    current_time = 0.0
+
+    for sentence in raw_sentences:
+        sentence_words = len(sentence.split())
+        # Allocate time proportional to sentence length
+        chunk_duration = (sentence_words / total_words) * total_duration
+        if chunk_duration < 1.5:  # ensure readability minimum
+            chunk_duration = 1.5
+
+        # Create individual animated text card for this specific phrase
+        txt_clip = TextClip(
+            sentence, 
+            fontsize=40, 
+            color='white', 
+            font='Arial-Bold',
+            size=(1100, 400),
+            method='caption',
+            align='center'
+        ).set_start(current_time).set_duration(chunk_duration).set_position('center')
+
+        caption_clips.append(txt_clip)
+        current_time += chunk_duration
+
+    # If timing slightly overshoots total duration, adjust the final clip duration
+    if caption_clips and current_time > total_duration:
+        excess = current_time - total_duration
+        caption_clips[-1] = caption_clips[-1].set_duration(max(1.0, caption_clips[-1].duration - excess))
+
+    # Composite background motion video with the sequential timed captions
+    video = CompositeVideoClip([bg_clip] + caption_clips)
     video = video.set_audio(audio_clip)
 
     video.write_videofile(
