@@ -11,12 +11,13 @@ from moviepy.editor import TextClip, CompositeVideoClip, VideoFileClip, AudioFil
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 import edge_tts
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 VOICE = "en-US-ChristopherNeural"
 
-# Rotation pool with unique thumbnail text and matching scenic background imagery
+# Rotation pool with unique thumbnail text mapped dynamically to titles
 SERVANT_LEADERSHIP_LIBRARY = [
     {
         "title": "The Quiet Elevation | The Power of Servant Leadership 🌿",
@@ -29,7 +30,7 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "servant leadership, quiet strength, leadership inspiration, empathetic leadership, Christian leadership, lead to serve",
         "hashtags": "#ServantLeadership #LeadershipInspiration #QuietStrength #EmpathyInLeadership #FaithAndLeadership",
-        "thumb_text": "LIFT OTHERS",
+        "thumb_text": "THE QUIET\nELEVATION",
         "thumb_bg_image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80",
         "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
     },
@@ -44,7 +45,7 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "servant heart, empowering people, leadership trust, team growth, servant leadership principles, inspiring leaders",
         "hashtags": "#ServantHeart #EmpowerOthers #LeadershipMindset #ServantLeadership #TeamBuilding",
-        "thumb_text": "THE HIGHEST WAY",
+        "thumb_text": "SERVANT'S\nHEART",
         "thumb_bg_image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1280&q=80",
         "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
     },
@@ -59,7 +60,7 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "empathy in leadership, gentle strength, leading with integrity, supportive leadership, servant leadership motivation",
         "hashtags": "#Empathy #LeadershipMotivation #ServantLeadership #LeadingWithGrace #InspirationalQuotes",
-        "thumb_text": "QUIET STRENGTH",
+        "thumb_text": "STRENGTH OF\nEMPATHY",
         "thumb_bg_image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&q=80",
         "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
     },
@@ -74,7 +75,7 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "building people, legacy leadership, people over projects, investing in teams, servant leadership coaching",
         "hashtags": "#PeopleFirst #LeadershipLegacy #ServantLeadership #TeamSuccess #InspirationalLeadership",
-        "thumb_text": "BUILDING PEOPLE",
+        "thumb_text": "BUILDING\nPEOPLE",
         "thumb_bg_image": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&q=80",
         "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
     },
@@ -89,7 +90,7 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "listening first, intentional listening, respectful leadership, valuing every voice, servant leadership fundamentals",
         "hashtags": "#ActiveListening #LeadershipSkills #ServantLeadership #ValuePeople #GrowthMindset",
-        "thumb_text": "LISTEN FIRST",
+        "thumb_text": "THE ART OF\nLISTENING",
         "thumb_bg_image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1280&q=80",
         "video_bg_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
     }
@@ -119,7 +120,7 @@ def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thum
 
     draw = ImageDraw.Draw(image)
     try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 85)
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
     except IOError:
         font = ImageFont.load_default()
 
@@ -185,25 +186,32 @@ def upload_to_youtube(video_path, thumb_path, title, description, tags):
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
     
-    response = None
-    while response is None:
-        status, response = request.next_chunk()
-        if status:
-            print(f"Uploaded {int(status.progress() * 100)}%.")
-            
-    video_id = response.get('id')
-    print(f"Video successfully uploaded! YouTube Video ID: {video_id}")
+    try:
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status:
+                print(f"Uploaded {int(status.progress() * 100)}%.")
+                
+        video_id = response.get('id')
+        print(f"Video successfully uploaded! YouTube Video ID: {video_id}")
 
-    if os.path.exists(thumb_path):
-        print("Uploading custom photographic thumbnail...")
-        try:
-            youtube.thumbnails().set(
-                videoId=video_id,
-                media_body=MediaFileUpload(thumb_path)
-            ).execute()
-            print("Custom thumbnail assigned successfully via YouTube API!")
-        except Exception as e:
-            print(f"Failed to upload thumbnail: {e}")
+        if os.path.exists(thumb_path):
+            print("Uploading custom photographic thumbnail...")
+            try:
+                youtube.thumbnails().set(
+                    videoId=video_id,
+                    media_body=MediaFileUpload(thumb_path)
+                ).execute()
+                print("Custom thumbnail assigned successfully via YouTube API!")
+            except Exception as e:
+                print(f"Failed to upload thumbnail: {e}")
+                
+    except HttpError as e:
+        if "uploadLimitExceeded" in str(e):
+            print("\n[WARNING] YouTube daily upload limit has been reached for this channel. Please try uploading again tomorrow.")
+        else:
+            raise e
 
 def main():
     print("Starting YouTube automation script...")
@@ -218,6 +226,7 @@ def main():
     selected_video_url = content_item["video_bg_url"]
 
     print(f"Selected Title: {video_title}")
+    print(f"Selected Thumbnail Text: {thumb_text}")
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
@@ -245,17 +254,14 @@ def main():
         except Exception as e:
             print(f"Error processing video background: {e}")
 
-    # ANIMATED NATURE PHOTO FALLBACK: If video loading fails, download the scenic photo and apply a cinematic Ken Burns zoom animation
     if bg_clip is None:
         print("Video background unavailable. Applying animated nature photo fallback...")
         photo_path = "animated_bg_photo.jpg"
         if download_file(thumb_bg_image, photo_path):
             try:
-                # Create an animated zoom/pan effect from the still nature photo
                 bg_clip = ImageClip(photo_path).set_duration(total_duration)
                 bg_clip = bg_clip.resize(lambda t: 1.0 + 0.08 * (t / total_duration))
                 bg_clip = bg_clip.set_fps(24).crop(x_center=bg_clip.w/2, y_center=bg_clip.h/2, width=1280, height=720)
-                print("Successfully created animated nature photo background!")
             except Exception as ex:
                 print(f"Photo animation fallback error: {ex}")
 
