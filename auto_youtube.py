@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 
 VOICE = "en-US-ChristopherNeural"
 
-# Rotation pool with custom thumbnail text and matching high-res scenic image URLs
+# Rotation pool with unique thumbnail text per video entry
 SERVANT_LEADERSHIP_LIBRARY = [
     {
         "title": "The Quiet Elevation | The Power of Servant Leadership 🌿",
@@ -30,7 +30,7 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "servant leadership, quiet strength, leadership inspiration, empathetic leadership, Christian leadership, lead to serve",
         "hashtags": "#ServantLeadership #LeadershipInspiration #QuietStrength #EmpathyInLeadership #FaithAndLeadership",
         "thumb_text": "LIFT OTHERS",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80" # Scenic mountain landscape
+        "thumb_bg_image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80"
     },
     {
         "title": "Leading with a Servant's Heart | Empower Your Team 🌟",
@@ -43,8 +43,8 @@ SERVANT_LEADERSHIP_LIBRARY = [
         ),
         "keywords": "servant heart, empowering people, leadership trust, team growth, servant leadership principles, inspiring leaders",
         "hashtags": "#ServantHeart #EmpowerOthers #LeadershipMindset #ServantLeadership #TeamBuilding",
-        "thumb_text": "THE HIGHEST\nWAY",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1280&q=80" # Warm study/desk aesthetic
+        "thumb_text": "THE HIGHEST WAY",
+        "thumb_bg_image": "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1280&q=80"
     },
     {
         "title": "The Strength of Empathy in Leadership 🌱",
@@ -58,7 +58,35 @@ SERVANT_LEADERSHIP_LIBRARY = [
         "keywords": "empathy in leadership, gentle strength, leading with integrity, supportive leadership, servant leadership motivation",
         "hashtags": "#Empathy #LeadershipMotivation #ServantLeadership #LeadingWithGrace #InspirationalQuotes",
         "thumb_text": "QUIET STRENGTH",
-        "thumb_bg_image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&q=80" # Sunlit forest pathway
+        "thumb_bg_image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&q=80"
+    },
+    {
+        "title": "Building People, Not Just Projects | Leadership Focus 💡",
+        "script": (
+            "Projects end, but people endure. "
+            "A transactional leader focuses only on the output, but a servant leader invests in the person. "
+            "By offering guidance, fostering encouragement, and offering a steady hand in difficult seasons, "
+            "you create a legacy that outlasts any single achievement. "
+            "Lead to serve, and watch your team flourish."
+        ),
+        "keywords": "building people, legacy leadership, people over projects, investing in teams, servant leadership coaching",
+        "hashtags": "#PeopleFirst #LeadershipLegacy #ServantLeadership #TeamSuccess #InspirationalLeadership",
+        "thumb_text": "BUILDING PEOPLE",
+        "thumb_bg_image": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1280&q=80"
+    },
+    {
+        "title": "The Art of Listening First | Core Leadership Skill 🎧",
+        "script": (
+            "Before a leader can guide a team forward, they must first understand where they stand. "
+            "Servant leadership begins with deep, intentional listening. "
+            "It values every voice, respects every perspective, and honors the unique strengths of every individual. "
+            "When people know they are truly heard, they give their best. "
+            "Lead with a heart of service today."
+        ),
+        "keywords": "listening first, intentional listening, respectful leadership, valuing every voice, servant leadership fundamentals",
+        "hashtags": "#ActiveListening #LeadershipSkills #ServantLeadership #ValuePeople #GrowthMindset",
+        "thumb_text": "LISTEN FIRST",
+        "thumb_bg_image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1280&q=80"
     }
 ]
 
@@ -76,10 +104,9 @@ async def generate_voiceover(text, output_filename="voiceover.mp3"):
     print("Voiceover generated successfully!")
 
 def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thumbnail.jpg"):
-    print("Generating custom photographic SEO thumbnail...")
+    print(f"Generating photographic SEO thumbnail with text: '{thumb_text}'...")
     raw_img_path = "raw_thumb_bg.jpg"
     
-    # 1. Download the scenic background image for the thumbnail
     success = download_file(image_url, raw_img_path)
     
     width, height = 1280, 720
@@ -87,22 +114,19 @@ def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thum
         image = Image.open(raw_img_path).convert("RGB")
         image = image.resize((width, height), Image.Resampling.LANCZOS)
         
-        # Apply a subtle dark gradient/dimmer overlay so the white text pops clearly
+        # Dim background slightly for text readability
         enhancer = ImageEnhance.Brightness(image)
-        image = enhancer.enhance(0.65) # Darken slightly for readability
+        image = enhancer.enhance(0.65)
     else:
-        # Fallback solid background if image download fails
         image = Image.new("RGB", (width, height), color=(15, 23, 42))
 
     draw = ImageDraw.Draw(image)
 
-    # Try loading a bold font, fallback to default if unavailable
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 85)
     except IOError:
         font = ImageFont.load_default()
 
-    # Center text calculation
     try:
         bbox = draw.multiline_textbbox((0, 0), thumb_text, font=font, spacing=15, align="center")
         text_width = bbox[2] - bbox[0]
@@ -113,13 +137,12 @@ def generate_photographic_thumbnail(image_url, thumb_text, output_filename="thum
     x = (width - text_width) / 2
     y = (height - text_height) / 2
 
-    # Draw soft shadow for professional depth matching your uploaded style
+    # Draw soft shadow and crisp white text centered on the thumbnail
     draw.multiline_text((x + 3, y + 3), thumb_text, font=font, fill=(0, 0, 0), spacing=15, align="center")
-    # Draw crisp white text
     draw.multiline_text((x, y), thumb_text, font=font, fill=(255, 255, 255), spacing=15, align="center")
 
     image.save(output_filename, "JPEG", quality=95)
-    print("Photographic SEO thumbnail created successfully!")
+    print("Thumbnail created successfully!")
 
 def download_file(url, output_filename):
     print(f"Downloading asset from {url}...")
@@ -201,6 +224,7 @@ def main():
     selected_bg_url = random.choice(BACKGROUND_VIDEO_URLS)
 
     print(f"Selected Title: {video_title}")
+    print(f"Selected Thumbnail Text: {thumb_text}")
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(generate_voiceover(script_text, "voiceover.mp3"))
